@@ -57,22 +57,23 @@ var activityCommandDelegate:CDVCommandDelegate?;
         locationManager.requestLocationPermissions();
         self.promptForNotificationPermission();
 
+
         NotificationCenter.default.addObserver(
             self,
-            selector: Selector("onResume"),
-            name: NSNotification.Name.UIApplicationWillEnterForeground,
+            selector: #selector(onResume),
+            name: UIApplication.willEnterForegroundNotification,
             object: nil);
 
         NotificationCenter.default.addObserver(
             self,
-            selector: Selector("onSuspend"),
-            name: NSNotification.Name.UIApplicationDidEnterBackground,
+            selector: #selector(onSuspend),
+            name: UIApplication.didEnterBackgroundNotification,
             object: nil);
 
         NotificationCenter.default.addObserver(
             self,
-            selector: Selector("willResign"),
-            name: NSNotification.Name.UIApplicationWillResignActive,
+            selector: #selector(willResign),
+            name: UIApplication.willResignActiveNotification,
             object: nil);
     }
 
@@ -86,7 +87,7 @@ var activityCommandDelegate:CDVCommandDelegate?;
     // 7 notificationText-- (not used on ios),
     // 8 activityType, fences -- (not used ios)
     // 9 useActivityDetection
-    open func configure(_ command: CDVInvokedUrlCommand) {
+    @objc open func configure(_ command: CDVInvokedUrlCommand) {
 
         //log(message: "configure arguments: \(command.arguments)");
 
@@ -110,20 +111,19 @@ var activityCommandDelegate:CDVCommandDelegate?;
         commandDelegate!.send(pluginResult, callbackId:command.callbackId)
     }
 
-    open func registerForLocationUpdates(_ command: CDVInvokedUrlCommand) {
+    @objc open func registerForLocationUpdates(_ command: CDVInvokedUrlCommand) {
         log(message: "registerForLocationUpdates");
         locationUpdateCallback = command.callbackId;
         locationCommandDelegate = commandDelegate;
     }
 
-    open func registerForActivityUpdates(_ command : CDVInvokedUrlCommand) {
+    @objc open func registerForActivityUpdates(_ command : CDVInvokedUrlCommand) {
         log(message: "registerForActivityUpdates");
         activityUpdateCallback = command.callbackId;
         activityCommandDelegate = commandDelegate;
     }
 
-
-    open func start(_ command: CDVInvokedUrlCommand) {
+    @objc open func start(_ command: CDVInvokedUrlCommand) {
         log(message: "Started");
         enabled = true;
 
@@ -138,7 +138,7 @@ var activityCommandDelegate:CDVCommandDelegate?;
         commandDelegate!.send(pluginResult, callbackId:command.callbackId)
     }
 
-    func stop(_ command: CDVInvokedUrlCommand) {
+    @objc func stop(_ command: CDVInvokedUrlCommand) {
         log(message: "Stopped");
         enabled = false;
 
@@ -176,7 +176,7 @@ var activityCommandDelegate:CDVCommandDelegate?;
     }
 
     //State Methods
-    func onResume() {
+    @objc func onResume() {
         log(message: "App Resumed");
         background = false;
 
@@ -185,7 +185,7 @@ var activityCommandDelegate:CDVCommandDelegate?;
         activityManager.stopDetection();
     }
 
-    func onSuspend() {
+    @objc func onSuspend() {
         log(message: "App Suspended. Enabled? \(enabled)");
         background = true;
 
@@ -195,7 +195,7 @@ var activityCommandDelegate:CDVCommandDelegate?;
         }
     }
 
-    func willResign() {
+    @objc func willResign() {
         log(message: "App Will Resign. Enabled? \(enabled)");
         background = true;
 
@@ -443,7 +443,7 @@ class LocationManager : NSObject, CLLocationManagerDelegate {
         stopUpdateTimer = Timer.scheduledTimer(timeInterval: syncSeconds, target: self, selector: #selector(LocationManager.syncAfterXSeconds), userInfo: nil, repeats: false);
     }
 
-    func restartUpdates() {
+    @objc func restartUpdates() {
         log(message: "restartUpdates called");
         if(locationTimer != nil) {
             locationTimer.invalidate();
@@ -465,7 +465,7 @@ class LocationManager : NSObject, CLLocationManagerDelegate {
         self.startUpdating(force: true);
     }
 
-    func syncAfterXSeconds() {
+    @objc func syncAfterXSeconds() {
         self.setGPSLowPower();
         self.sync();
         log(message: "Stopped Location Updates After \(syncSeconds)");
@@ -642,21 +642,21 @@ class TaskManager : NSObject {
 
     //let priority = DispatchQueue.GlobalAttributes.qosUserInitiated;
 
-    var _bgTaskList = [Int]();
-    var _masterTaskId = UIBackgroundTaskInvalid;
+    var _bgTaskList = [UIBackgroundTaskIdentifier]();
+    var _masterTaskId = UIBackgroundTaskIdentifier.invalid;
 
     func beginNewBackgroundTask() -> UIBackgroundTaskIdentifier {
         //log(message: "beginNewBackgroundTask called");
 
         let app = UIApplication.shared;
 
-        var bgTaskId = UIBackgroundTaskInvalid;
+        var bgTaskId = UIBackgroundTaskIdentifier.invalid;
 
         if(app.responds(to: Selector(("beginBackgroundTask")))) {
             bgTaskId = app.beginBackgroundTask(expirationHandler: {
                 log(message: "Background task \(bgTaskId) expired");
             });
-            if(self._masterTaskId == UIBackgroundTaskInvalid) {
+            if(self._masterTaskId == .invalid) {
                 self._masterTaskId = bgTaskId;
                 log(message: "Started Master Task ID \(self._masterTaskId)");
             } else {
@@ -683,7 +683,7 @@ class TaskManager : NSObject {
             let count = self._bgTaskList.count;
 
             for _ in 0 ..< count {
-                let bgTaskId = self._bgTaskList[0] as Int;
+                let bgTaskId = self._bgTaskList[0];
                 log(message: "Ending Background Task  with ID \(bgTaskId)");
                 app.endBackgroundTask(bgTaskId);
                 self._bgTaskList.remove(at: 0);
@@ -696,7 +696,7 @@ class TaskManager : NSObject {
             if(all) {
                 log(message: "Killing Master Task \(self._masterTaskId)");
                 app.endBackgroundTask(self._masterTaskId);
-                self._masterTaskId = UIBackgroundTaskInvalid;
+                self._masterTaskId = .invalid;
             } else {
                 log(message: "Kept Master Task ID \(self._masterTaskId)");
             }

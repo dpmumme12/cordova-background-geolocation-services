@@ -3,19 +3,18 @@ var child_process = require('child_process'),
     path = require('path');
 
 module.exports = function(context) {
-    var IOS_DEPLOYMENT_TARGET = '8.0',
-        SWIFT_VERSION = '3.0',
+    var IOS_DEPLOYMENT_TARGET = '12.0',
+        SWIFT_VERSION = '5.0',
         COMMENT_KEY = /_comment$/,
         CORDOVA_VERSION = process.env.CORDOVA_VERSION;
 
     run();
 
     function run() {
-        var cordova_util = context.requireCordovaModule('cordova-lib/src/cordova/util'),
-            ConfigParser = CORDOVA_VERSION >= 6.0
-              ? context.requireCordovaModule('cordova-common').ConfigParser
-              : context.requireCordovaModule('cordova-lib/src/configparser/ConfigParser'),
-            projectRoot = cordova_util.isCordova(),
+        var cordova_util = context.requireCordovaModule('cordova-lib/src/cordova/util');
+        console.log(`Cordova version ${CORDOVA_VERSION}`);
+        var ConfigParser = context.requireCordovaModule('cordova-common').ConfigParser;
+        var projectRoot = cordova_util.isCordova(),
             platform_ios,
             xml = cordova_util.projectConfig(projectRoot),
             cfg = new ConfigParser(xml),
@@ -28,39 +27,31 @@ module.exports = function(context) {
             xcodeProject,
             bridgingHeaderPath;
 
-        if(CORDOVA_VERSION < 7.0) {
-            platform_ios = CORDOVA_VERSION < 5.0 
-              ? context.requireCordovaModule('cordova-lib/src/plugman/platforms')['ios']
-              : context.requireCordovaModule('cordova-lib/src/plugman/platforms/ios')
-
-            projectFile = platform_ios.parseProjectFile(iosPlatformPath);
-        } else {
-            var project_files = context.requireCordovaModule('glob').sync(path.join(iosPlatformPath, '*.xcodeproj', 'project.pbxproj'));
-            if (project_files.length === 0) {
-                throw new Error('Can\'t found xcode project file');
-            }
-
-            var pbxPath = project_files[0];
-            var xcodeproj = context.requireCordovaModule('xcode').project(pbxPath);
-            xcodeproj.parseSync();
-
-            projectFile = {
-                'xcode': xcodeproj,
-                write: function () {
-                    var fs = context.requireCordovaModule('fs');
-
-                    var frameworks_file = path.join(iosPlatformPath, 'frameworks.json');
-                    var frameworks = {};
-                    try {
-                        frameworks = context.requireCordovaModule(frameworks_file);
-                        console.log(JSON.stringify(frameworks));
-                    } catch(e) {}
-
-                    fs.writeFileSync(pbxPath, xcodeproj.writeSync());
-                    fs.writeFileSync(frameworks_file, JSON.stringify(this.frameworks, null, 4));
-                }
-            };
+        var project_files = require('glob').sync(path.join(iosPlatformPath, '*.xcodeproj', 'project.pbxproj'));
+        if (project_files.length === 0) {
+            throw new Error('Can\'t found xcode project file');
         }
+
+        var pbxPath = project_files[0];
+        var xcodeproj = require('xcode').project(pbxPath);
+        xcodeproj.parseSync();
+
+        projectFile = {
+            'xcode': xcodeproj,
+            write: function () {
+                var fs = require('fs');
+
+                var frameworks_file = path.join(iosPlatformPath, 'frameworks.json');
+                var frameworks = {};
+                try {
+                    frameworks = require(frameworks_file);
+                    console.log(JSON.stringify(frameworks));
+                } catch(e) {}
+
+                fs.writeFileSync(pbxPath, xcodeproj.writeSync());
+                fs.writeFileSync(frameworks_file, JSON.stringify(this.frameworks, null, 4));
+            }
+        };
         xcodeProject = projectFile.xcode;
 
         if (fs.existsSync(xcconfigPath)) {
