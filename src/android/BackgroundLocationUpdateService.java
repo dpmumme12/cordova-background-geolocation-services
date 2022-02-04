@@ -258,7 +258,7 @@ public class BackgroundLocationUpdateService extends Service
             // Build the notification / pending intent
             Intent main = new Intent(this, BackgroundLocationServicesPlugin.class);
             main.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-            PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, main, PendingIntent.FLAG_UPDATE_CURRENT);
+            PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, main, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
 
             Context context = getApplicationContext();
 
@@ -313,7 +313,7 @@ public class BackgroundLocationUpdateService extends Service
             setClickEvent(builder);
 
             Notification notification = builder.build();
-            notification.flags |= Notification.FLAG_ONGOING_EVENT | Notification.FLAG_FOREGROUND_SERVICE | Notification.FLAG_NO_CLEAR;
+//            notification.flags |= Notification.FLAG_ONGOING_EVENT | Notification.FLAG_FOREGROUND_SERVICE | Notification.FLAG_NO_CLEAR;
             startForeground(startId, notification);
         }
 
@@ -364,7 +364,7 @@ public class BackgroundLocationUpdateService extends Service
 
         int requestCode = new Random().nextInt();
 
-        PendingIntent contentIntent = PendingIntent.getActivity(context, requestCode, launchIntent, PendingIntent.FLAG_CANCEL_CURRENT);
+        PendingIntent contentIntent = PendingIntent.getActivity(context, requestCode, launchIntent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_CANCEL_CURRENT);
 
         return notification.setContentIntent(contentIntent);
     }
@@ -583,7 +583,7 @@ public class BackgroundLocationUpdateService extends Service
         super.onDestroy();
     }
 
-    private void cleanUp() {
+    private void cleanUpReceivers() {
         try {
             unregisterReceiver(locationUpdateReceiver);
             unregisterReceiver(startRecordingReceiver);
@@ -592,6 +592,9 @@ public class BackgroundLocationUpdateService extends Service
         } catch (IllegalArgumentException e) {
             Log.e(TAG, "Error: Could not unregister receiver", e);
         }
+    }
+    private void cleanUp() {
+        cleanUpReceivers();
 
         try {
             stopForeground(true);
