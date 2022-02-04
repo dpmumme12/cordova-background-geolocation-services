@@ -389,7 +389,30 @@ public class BackgroundLocationServicesPlugin extends CordovaPlugin {
         return true;
     }
 
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) throws JSONException {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
+        for (int r : grantResults) {
+            if (r == PackageManager.PERMISSION_DENIED) {
+                Log.d(TAG, "Permission Denied!");
+                PluginResult result = new PluginResult(PluginResult.Status.ERROR, PERMISSION_DENIED_ERROR);
+
+                if(this.startCallback != null) {
+                    startCallback.sendPluginResult(result);
+                }
+                return;
+            }
+        }
+        switch (requestCode) {
+            case START_REQ_CODE:
+                isServiceBound = bindServiceToWebview(cordova.getActivity(), updateServiceIntent);
+                isEnabled = true;
+                break;
+        }
+
+    }
+    
     public void onRequestPermissionResult(int requestCode, String[] permissions,
                                           int[] grantResults) throws JSONException {
         for (int r : grantResults) {
