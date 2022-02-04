@@ -15,7 +15,6 @@ module.exports = function(context) {
         console.log(`Cordova version ${CORDOVA_VERSION}`);
         var ConfigParser = context.requireCordovaModule('cordova-common').ConfigParser;
         var projectRoot = cordova_util.isCordova(),
-            platform_ios,
             xml = cordova_util.projectConfig(projectRoot),
             cfg = new ConfigParser(xml),
             projectName = cfg.name(),
@@ -45,11 +44,16 @@ module.exports = function(context) {
                 var frameworks = {};
                 try {
                     frameworks = require(frameworks_file);
-                    console.log(JSON.stringify(frameworks));
-                } catch(e) {}
+                    console.log(`Frameworks loaded from ${frameworks_file}:\n${JSON.stringify(frameworks)}`);
+                } catch(e) {
+                    console.log(`Error loading frameworks file: ${e}`);
+                }
 
+                console.log(`Write xcode project file ${pbxPath}`);
                 fs.writeFileSync(pbxPath, xcodeproj.writeSync());
-                fs.writeFileSync(frameworks_file, JSON.stringify(this.frameworks, null, 4));
+
+                console.log(`Write frameworks file ${frameworks_file}`);
+                fs.writeFileSync(frameworks_file, JSON.stringify(frameworks, null, 4));
             }
         };
         xcodeProject = projectFile.xcode;
