@@ -10,7 +10,7 @@
     <keywords></keywords>
 
     <engines>
-        <engine name="cordova" version=">=3.0.0"/>
+        <engine name="cordova" version=">=9.0.0"/>
     </engines>
 
     <js-module src="www/BackgroundLocationServices.js" name="BackgroundLocationServices">
@@ -64,6 +64,10 @@
 
         <config-file target="*-Info.plist" parent="NSLocationWhenInUseUsageDescription">
             <string>${EXECUTABLE_NAME} Would Like to Use Your Current Location Even In Background.</string>
+        </config-file>
+
+        <config-file target="*-Info.plist" parent="NSBluetoothAlwaysUsageDescription">
+            <string>We would like to use your bluetooth for monitoring load progress.</string>
         </config-file>
 
         <!-- Usage description of Motion, mandatory since iOS 10 -->
