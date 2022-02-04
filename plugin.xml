@@ -66,6 +66,10 @@
             <string>${EXECUTABLE_NAME} Would Like to Use Your Current Location Even In Background.</string>
         </config-file>
 
+        <config-file target="*-Info.plist" parent="NSBluetoothAlwaysUsageDescription">
+            <string>We would like to use your bluetooth for monitoring load progress.</string>
+        </config-file>
+
         <!-- Usage description of Motion, mandatory since iOS 10 -->
         <config-file target="*-Info.plist" parent="NSMotionUsageDescription">
             <string>${EXECUTABLE_NAME} Would Like to Use Motion Data.</string>
