@@ -10,7 +10,7 @@
     <keywords></keywords>
 
     <engines>
-        <engine name="cordova" version=">=3.0.0"/>
+        <engine name="cordova" version=">=9.0.0"/>
     </engines>
 
     <js-module src="www/BackgroundLocationServices.js" name="BackgroundLocationServices">
