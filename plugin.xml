@@ -20,6 +20,7 @@
     <!-- android -->
     <platform name="android">
         <framework src="com.google.android.gms:play-services-location:+" />
+        <framework src="src/android/build-extras.gradle" custom="true" type="gradleReference" />
 
         <source-file src="src/android/BackgroundLocationServicesPlugin.java" target-dir="src/com/flybuy/cordova/location"/>
         <source-file src="src/android/BackgroundLocationUpdateService.java" target-dir="src/com/flybuy/cordova/location"/>
