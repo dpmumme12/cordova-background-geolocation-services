@@ -1,3 +1,3 @@
-if (!project.hasProperty('cdvCompileSdkVersion') || cdvCompileSdkVersion < 31) {
-    ext.cdvCompileSdkVersion = 31;
+if (!project.hasProperty('cdvCompileSdkVersion') || cdvCompileSdkVersion < 33) {
+    ext.cdvCompileSdkVersion = 33;
 }
