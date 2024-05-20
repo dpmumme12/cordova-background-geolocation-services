@@ -1,6 +1,7 @@
 package com.flybuy.cordova.location;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -31,6 +32,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
+import androidx.core.view.ContentInfoCompat;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -208,6 +210,7 @@ public class BackgroundLocationUpdateService extends Service
         return null;
     }
 
+    @SuppressLint("WrongConstant")
     @Override
     public void onCreate() {
         super.onCreate();
@@ -219,17 +222,28 @@ public class BackgroundLocationUpdateService extends Service
 
         // Location Update PI
         Intent locationUpdateIntent = new Intent(Constants.LOCATION_UPDATE);
-
+        @ContentInfoCompat.Flags int intentFlags;
+        if (Build.VERSION.SDK_INT >= 34) {
+            intentFlags = PendingIntent.FLAG_MUTABLE | PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_ALLOW_UNSAFE_IMPLICIT_INTENT;
+        } else {
+            intentFlags = PendingIntent.FLAG_MUTABLE | PendingIntent.FLAG_UPDATE_CURRENT;
+        }
         locationUpdatePI = PendingIntent.getBroadcast(
                 this,
                 9001,
                 locationUpdateIntent,
-                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
+                intentFlags
         );
-
         registerReceiver(locationUpdateReceiver, new IntentFilter(Constants.LOCATION_UPDATE));
 
         Intent detectedActivitiesIntent = new Intent(Constants.DETECTED_ACTIVITY_UPDATE);
+        detectedActivitiesPI = PendingIntent.getBroadcast(
+                this,
+                9002,
+                detectedActivitiesIntent,
+                intentFlags
+        );
+
         detectedActivitiesPI = PendingIntent.getBroadcast(
                 this,
                 9002,
