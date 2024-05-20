@@ -27,6 +27,7 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
@@ -83,7 +84,7 @@ public class BackgroundLocationUpdateService extends Service
 
     private LocationRequest locationRequest;
     //Receivers for setting the plugin to a certain state
-    private BroadcastReceiver startAggressiveReceiver = new BroadcastReceiver() {
+    private final BroadcastReceiver startAggressiveReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             setStartAggressiveTrackingOn();
@@ -92,24 +93,27 @@ public class BackgroundLocationUpdateService extends Service
     /**
      * Broadcast receiver for receiving a single-update from LocationManager.
      */
-    private BroadcastReceiver locationUpdateReceiver = new BroadcastReceiver() {
+    private final BroadcastReceiver locationUpdateReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (LocationResult.hasResult(intent)) {
                 LocationResult result = LocationResult.extractResult(intent);
 
-                Location location = result.getLastLocation();
+                Location location = null;
+                if (result != null) {
+                    location = result.getLastLocation();
 
-                if (location != null) {
-                    Intent mIntent = new Intent(Constants.CALLBACK_LOCATION_UPDATE);
-                    mIntent.putExtras(createLocationBundle(location));
-                    getApplicationContext().sendBroadcast(mIntent);
+                    if (location != null) {
+                        Intent mIntent = new Intent(Constants.CALLBACK_LOCATION_UPDATE);
+                        mIntent.putExtras(createLocationBundle(location));
+                        getApplicationContext().sendBroadcast(mIntent);
+                    }
                 }
             }
 
             if (LocationAvailability.hasLocationAvailability(intent)) {
                 LocationAvailability locationAvailability = LocationAvailability.extractLocationAvailability(intent);
-                if (!locationAvailability.isLocationAvailable()) {
+                if (locationAvailability != null && !locationAvailability.isLocationAvailable()) {
                     Intent mIntent = new Intent(Constants.CALLBACK_LOCATION_UPDATE);
                     mIntent.putExtra("error", "Location Provider is not available. Maybe GPS is disabled or the provider was rejected?");
                     getApplicationContext().sendBroadcast(mIntent);
@@ -118,7 +122,7 @@ public class BackgroundLocationUpdateService extends Service
         }
     };
     private boolean startRecordingOnConnect = true;
-    private BroadcastReceiver detectedActivitiesReceiver = new BroadcastReceiver() {
+    private final BroadcastReceiver detectedActivitiesReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             ActivityRecognitionResult result = ActivityRecognitionResult.extractResult(intent);
@@ -144,7 +148,7 @@ public class BackgroundLocationUpdateService extends Service
             //else do nothing
         }
     };
-    private GoogleApiClient.ConnectionCallbacks cb = new GoogleApiClient.ConnectionCallbacks() {
+    private final GoogleApiClient.ConnectionCallbacks cb = new GoogleApiClient.ConnectionCallbacks() {
         @Override
         public void onConnected(Bundle bundle) {
             Log.w(TAG, "Activity Client Connected");
@@ -161,13 +165,13 @@ public class BackgroundLocationUpdateService extends Service
             showDebugToast(getApplicationContext(), "Activity Client Suspended");
         }
     };
-    private GoogleApiClient.OnConnectionFailedListener failedCb = new GoogleApiClient.OnConnectionFailedListener() {
+    private final GoogleApiClient.OnConnectionFailedListener failedCb = new GoogleApiClient.OnConnectionFailedListener() {
         @Override
-        public void onConnectionFailed(ConnectionResult cr) {
+        public void onConnectionFailed(@NonNull ConnectionResult cr) {
             Log.w(TAG, "ERROR CONNECTING TO DETECTED ACTIVITIES");
         }
     };
-    private BroadcastReceiver startRecordingReceiver = new BroadcastReceiver() {
+    private final BroadcastReceiver startRecordingReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (isDebugging) {
@@ -182,7 +186,7 @@ public class BackgroundLocationUpdateService extends Service
             startRecording();
         }
     };
-    private BroadcastReceiver stopRecordingReceiver = new BroadcastReceiver() {
+    private final BroadcastReceiver stopRecordingReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (isDebugging) {
@@ -215,11 +219,23 @@ public class BackgroundLocationUpdateService extends Service
 
         // Location Update PI
         Intent locationUpdateIntent = new Intent(Constants.LOCATION_UPDATE);
-        locationUpdatePI = PendingIntent.getBroadcast(this, 9001, locationUpdateIntent, PendingIntent.FLAG_MUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+
+        locationUpdatePI = PendingIntent.getBroadcast(
+                this,
+                9001,
+                locationUpdateIntent,
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
+        );
+
         registerReceiver(locationUpdateReceiver, new IntentFilter(Constants.LOCATION_UPDATE));
 
         Intent detectedActivitiesIntent = new Intent(Constants.DETECTED_ACTIVITY_UPDATE);
-        detectedActivitiesPI = PendingIntent.getBroadcast(this, 9002, detectedActivitiesIntent, PendingIntent.FLAG_MUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+        detectedActivitiesPI = PendingIntent.getBroadcast(
+                this,
+                9002,
+                detectedActivitiesIntent,
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
+        );
         registerReceiver(detectedActivitiesReceiver, new IntentFilter(Constants.DETECTED_ACTIVITY_UPDATE));
 
         // Receivers for start/stop recording
