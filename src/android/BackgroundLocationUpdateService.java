@@ -101,7 +101,7 @@ public class BackgroundLocationUpdateService extends Service
             if (LocationResult.hasResult(intent)) {
                 LocationResult result = LocationResult.extractResult(intent);
 
-                Location location = null;
+                Location location;
                 if (result != null) {
                     location = result.getLastLocation();
 
@@ -210,7 +210,7 @@ public class BackgroundLocationUpdateService extends Service
         return null;
     }
 
-    @SuppressLint("WrongConstant")
+    @SuppressLint({"WrongConstant", "UnspecifiedRegisterReceiverFlag"})
     @Override
     public void onCreate() {
         super.onCreate();
@@ -222,19 +222,13 @@ public class BackgroundLocationUpdateService extends Service
 
         // Location Update PI
         Intent locationUpdateIntent = new Intent(Constants.LOCATION_UPDATE);
-        @ContentInfoCompat.Flags int intentFlags;
-        if (Build.VERSION.SDK_INT >= 34) {
-            intentFlags = PendingIntent.FLAG_MUTABLE | PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_ALLOW_UNSAFE_IMPLICIT_INTENT;
-        } else {
-            intentFlags = PendingIntent.FLAG_MUTABLE | PendingIntent.FLAG_UPDATE_CURRENT;
-        }
+        @ContentInfoCompat.Flags int intentFlags = PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_ALLOW_UNSAFE_IMPLICIT_INTENT;
         locationUpdatePI = PendingIntent.getBroadcast(
                 this,
                 9001,
                 locationUpdateIntent,
                 intentFlags
         );
-        registerReceiver(locationUpdateReceiver, new IntentFilter(Constants.LOCATION_UPDATE));
 
         Intent detectedActivitiesIntent = new Intent(Constants.DETECTED_ACTIVITY_UPDATE);
         detectedActivitiesPI = PendingIntent.getBroadcast(
@@ -250,12 +244,26 @@ public class BackgroundLocationUpdateService extends Service
                 detectedActivitiesIntent,
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
         );
-        registerReceiver(detectedActivitiesReceiver, new IntentFilter(Constants.DETECTED_ACTIVITY_UPDATE));
 
-        // Receivers for start/stop recording
-        registerReceiver(startRecordingReceiver, new IntentFilter(Constants.START_RECORDING));
-        registerReceiver(stopRecordingReceiver, new IntentFilter(Constants.STOP_RECORDING));
-        registerReceiver(startAggressiveReceiver, new IntentFilter(Constants.CHANGE_AGGRESSIVE));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(locationUpdateReceiver, new IntentFilter(Constants.LOCATION_UPDATE), Context.RECEIVER_NOT_EXPORTED);
+            registerReceiver(detectedActivitiesReceiver, new IntentFilter(Constants.DETECTED_ACTIVITY_UPDATE), Context.RECEIVER_NOT_EXPORTED);
+
+            // Receivers for start/stop recording
+            registerReceiver(startRecordingReceiver, new IntentFilter(Constants.START_RECORDING), Context.RECEIVER_NOT_EXPORTED);
+            registerReceiver(stopRecordingReceiver, new IntentFilter(Constants.STOP_RECORDING), Context.RECEIVER_NOT_EXPORTED);
+            registerReceiver(startAggressiveReceiver, new IntentFilter(Constants.CHANGE_AGGRESSIVE), Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(locationUpdateReceiver, new IntentFilter(Constants.LOCATION_UPDATE));
+            registerReceiver(detectedActivitiesReceiver, new IntentFilter(Constants.DETECTED_ACTIVITY_UPDATE));
+
+            // Receivers for start/stop recording
+            registerReceiver(startRecordingReceiver, new IntentFilter(Constants.START_RECORDING));
+            registerReceiver(stopRecordingReceiver, new IntentFilter(Constants.STOP_RECORDING));
+            registerReceiver(startAggressiveReceiver, new IntentFilter(Constants.CHANGE_AGGRESSIVE));
+        }
+
+
 
         // Location criteria
         criteria = new Criteria();
