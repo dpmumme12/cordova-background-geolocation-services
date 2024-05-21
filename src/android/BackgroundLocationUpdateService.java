@@ -239,13 +239,6 @@ public class BackgroundLocationUpdateService extends Service
                 intentFlags
         );
 
-        detectedActivitiesPI = PendingIntent.getBroadcast(
-                this,
-                9002,
-                detectedActivitiesIntent,
-                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
-        );
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(locationUpdateReceiver, new IntentFilter(Constants.LOCATION_UPDATE), Context.RECEIVER_NOT_EXPORTED);
             registerReceiver(detectedActivitiesReceiver, new IntentFilter(Constants.DETECTED_ACTIVITY_UPDATE), Context.RECEIVER_NOT_EXPORTED);
