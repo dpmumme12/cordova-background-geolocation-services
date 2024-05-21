@@ -1,6 +1,7 @@
 package com.flybuy.cordova.location;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -11,6 +12,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.content.pm.ServiceInfo;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -27,9 +29,11 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
+import androidx.core.view.ContentInfoCompat;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -83,7 +87,7 @@ public class BackgroundLocationUpdateService extends Service
 
     private LocationRequest locationRequest;
     //Receivers for setting the plugin to a certain state
-    private BroadcastReceiver startAggressiveReceiver = new BroadcastReceiver() {
+    private final BroadcastReceiver startAggressiveReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             setStartAggressiveTrackingOn();
@@ -92,24 +96,27 @@ public class BackgroundLocationUpdateService extends Service
     /**
      * Broadcast receiver for receiving a single-update from LocationManager.
      */
-    private BroadcastReceiver locationUpdateReceiver = new BroadcastReceiver() {
+    private final BroadcastReceiver locationUpdateReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (LocationResult.hasResult(intent)) {
                 LocationResult result = LocationResult.extractResult(intent);
 
-                Location location = result.getLastLocation();
+                Location location;
+                if (result != null) {
+                    location = result.getLastLocation();
 
-                if (location != null) {
-                    Intent mIntent = new Intent(Constants.CALLBACK_LOCATION_UPDATE);
-                    mIntent.putExtras(createLocationBundle(location));
-                    getApplicationContext().sendBroadcast(mIntent);
+                    if (location != null) {
+                        Intent mIntent = new Intent(Constants.CALLBACK_LOCATION_UPDATE);
+                        mIntent.putExtras(createLocationBundle(location));
+                        getApplicationContext().sendBroadcast(mIntent);
+                    }
                 }
             }
 
             if (LocationAvailability.hasLocationAvailability(intent)) {
                 LocationAvailability locationAvailability = LocationAvailability.extractLocationAvailability(intent);
-                if (!locationAvailability.isLocationAvailable()) {
+                if (locationAvailability != null && !locationAvailability.isLocationAvailable()) {
                     Intent mIntent = new Intent(Constants.CALLBACK_LOCATION_UPDATE);
                     mIntent.putExtra("error", "Location Provider is not available. Maybe GPS is disabled or the provider was rejected?");
                     getApplicationContext().sendBroadcast(mIntent);
@@ -118,7 +125,7 @@ public class BackgroundLocationUpdateService extends Service
         }
     };
     private boolean startRecordingOnConnect = true;
-    private BroadcastReceiver detectedActivitiesReceiver = new BroadcastReceiver() {
+    private final BroadcastReceiver detectedActivitiesReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             ActivityRecognitionResult result = ActivityRecognitionResult.extractResult(intent);
@@ -144,7 +151,7 @@ public class BackgroundLocationUpdateService extends Service
             //else do nothing
         }
     };
-    private GoogleApiClient.ConnectionCallbacks cb = new GoogleApiClient.ConnectionCallbacks() {
+    private final GoogleApiClient.ConnectionCallbacks cb = new GoogleApiClient.ConnectionCallbacks() {
         @Override
         public void onConnected(Bundle bundle) {
             Log.w(TAG, "Activity Client Connected");
@@ -161,13 +168,13 @@ public class BackgroundLocationUpdateService extends Service
             showDebugToast(getApplicationContext(), "Activity Client Suspended");
         }
     };
-    private GoogleApiClient.OnConnectionFailedListener failedCb = new GoogleApiClient.OnConnectionFailedListener() {
+    private final GoogleApiClient.OnConnectionFailedListener failedCb = new GoogleApiClient.OnConnectionFailedListener() {
         @Override
-        public void onConnectionFailed(ConnectionResult cr) {
+        public void onConnectionFailed(@NonNull ConnectionResult cr) {
             Log.w(TAG, "ERROR CONNECTING TO DETECTED ACTIVITIES");
         }
     };
-    private BroadcastReceiver startRecordingReceiver = new BroadcastReceiver() {
+    private final BroadcastReceiver startRecordingReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (isDebugging) {
@@ -182,7 +189,7 @@ public class BackgroundLocationUpdateService extends Service
             startRecording();
         }
     };
-    private BroadcastReceiver stopRecordingReceiver = new BroadcastReceiver() {
+    private final BroadcastReceiver stopRecordingReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (isDebugging) {
@@ -204,6 +211,7 @@ public class BackgroundLocationUpdateService extends Service
         return null;
     }
 
+    @SuppressLint({"WrongConstant", "UnspecifiedRegisterReceiverFlag"})
     @Override
     public void onCreate() {
         super.onCreate();
@@ -215,17 +223,41 @@ public class BackgroundLocationUpdateService extends Service
 
         // Location Update PI
         Intent locationUpdateIntent = new Intent(Constants.LOCATION_UPDATE);
-        locationUpdatePI = PendingIntent.getBroadcast(this, 9001, locationUpdateIntent, PendingIntent.FLAG_MUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-        registerReceiver(locationUpdateReceiver, new IntentFilter(Constants.LOCATION_UPDATE));
+        @ContentInfoCompat.Flags int intentFlags = PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_ALLOW_UNSAFE_IMPLICIT_INTENT;
+        locationUpdatePI = PendingIntent.getBroadcast(
+                this,
+                9001,
+                locationUpdateIntent,
+                intentFlags
+        );
 
         Intent detectedActivitiesIntent = new Intent(Constants.DETECTED_ACTIVITY_UPDATE);
-        detectedActivitiesPI = PendingIntent.getBroadcast(this, 9002, detectedActivitiesIntent, PendingIntent.FLAG_MUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-        registerReceiver(detectedActivitiesReceiver, new IntentFilter(Constants.DETECTED_ACTIVITY_UPDATE));
+        detectedActivitiesPI = PendingIntent.getBroadcast(
+                this,
+                9002,
+                detectedActivitiesIntent,
+                intentFlags
+        );
 
-        // Receivers for start/stop recording
-        registerReceiver(startRecordingReceiver, new IntentFilter(Constants.START_RECORDING));
-        registerReceiver(stopRecordingReceiver, new IntentFilter(Constants.STOP_RECORDING));
-        registerReceiver(startAggressiveReceiver, new IntentFilter(Constants.CHANGE_AGGRESSIVE));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(locationUpdateReceiver, new IntentFilter(Constants.LOCATION_UPDATE), Context.RECEIVER_NOT_EXPORTED);
+            registerReceiver(detectedActivitiesReceiver, new IntentFilter(Constants.DETECTED_ACTIVITY_UPDATE), Context.RECEIVER_NOT_EXPORTED);
+
+            // Receivers for start/stop recording
+            registerReceiver(startRecordingReceiver, new IntentFilter(Constants.START_RECORDING), Context.RECEIVER_NOT_EXPORTED);
+            registerReceiver(stopRecordingReceiver, new IntentFilter(Constants.STOP_RECORDING), Context.RECEIVER_NOT_EXPORTED);
+            registerReceiver(startAggressiveReceiver, new IntentFilter(Constants.CHANGE_AGGRESSIVE), Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(locationUpdateReceiver, new IntentFilter(Constants.LOCATION_UPDATE));
+            registerReceiver(detectedActivitiesReceiver, new IntentFilter(Constants.DETECTED_ACTIVITY_UPDATE));
+
+            // Receivers for start/stop recording
+            registerReceiver(startRecordingReceiver, new IntentFilter(Constants.START_RECORDING));
+            registerReceiver(stopRecordingReceiver, new IntentFilter(Constants.STOP_RECORDING));
+            registerReceiver(startAggressiveReceiver, new IntentFilter(Constants.CHANGE_AGGRESSIVE));
+        }
+
+
 
         // Location criteria
         criteria = new Criteria();
@@ -314,7 +346,15 @@ public class BackgroundLocationUpdateService extends Service
 
             Notification notification = builder.build();
             //notification.flags |= Notification.FLAG_ONGOING_EVENT | Notification.FLAG_FOREGROUND_SERVICE | Notification.FLAG_NO_CLEAR;
-            startForeground(startId, notification);
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                startForeground(startId, notification);
+            } else {
+                startForeground(
+                        startId,
+                        notification,
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+                );
+            }
         }
 
         // Log.i(TAG, "- url: " + url);
